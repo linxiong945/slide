@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<title>css+jQuery实现的可以左右拖拽的图片切换效果</title>
+		<script src="//cdn.bootcss.com/jquery/2.1.4/jquery.min.js"></script>
+	</head>
+	<body>
+		<style type="text/css">
+			*{margin: 0; padding: 0px;}
+			.container {overflow:hidden; margin:50px auto; position:relative; border-radius:5px; z-index:10; cursor: pointer;}
+			.pad {width:50px; height:300px;}
+			.right {float:right;}
+			.slide {width:60000px; position:absolute; left:0; top:0; z-index:-1;}
+			.slide img {display:block; float:left;}
+			.container .buttons {position:absolute; bottom: 2%; right: 10%; height:20px;}
+			.container .buttons b {display:block; width:10px; height:10px; overflow:hidden; margin:5px; background:#069; float:left; border-radius:10px;}
+			.container .buttons .on {background: #6cf;}
+		</style>
+		
+		<script type="text/javascript">
+			$(document).ready(function () {
+				var sliding = startClientX = startPixelOffset = pixelOffset = currentSlide = 0,
+				slideCount = $('.slide img').length;
+				var leftWidth;
+				//获取设置img宽高
+				if(navigator.userAgent.indexOf("iPhone") != -1 || navigator.userAgent.indexOf("Android") != -1 || navigator.userAgent.indexOf("Windows Phone") != -1){
+			    	//获取图片应该的宽高
+			    	var wWidth = document.documentElement.clientWidth;
+			    	//图片真实宽高
+			    	var ww = 731;
+			    	var wh = 270;
+			    	//计算图片高度
+			    	var wHeight = wh/ww * wWidth;
+			    	
+			    	leftWdith = wWidth;
+			    	//设置img的宽度
+			    	$(".slide img").css("width", wWidth + "px");
+			    	$(".slide img").css("height", wHeight + "px");
+			    	$(".container").css("width", wWidth + "px");
+			    	$(".container").css("height", wHeight + "px");
+			    }else{
+			    	var img = new Image();
+					img.src =$('.slide img').attr("src") ;
+					var imgWidth = img.width;
+					var imgHeight = img.height;
+					
+			    	var leftWidth = imgWidth;
+			    
+			    	$(".slide img").css("width", imgWidth + "px");
+			    	$(".slide img").css("height", imgHeight + "px");
+			    	$(".container").css("width", imgWidth + "px");
+			    	$(".container").css("height", imgHeight + "px");
+			    }
+				//设置真实偏移值
+				leftWidth = (typeof(leftWidth) == "undefined" ? document.documentElement.clientWidth : leftWidth);
+				
+				$('.container').on('mousedown touchstart', slideStart);
+				$('.container').on('mouseup mousestop touchend', slideEnd);
+				$('.container').on('mousemove mousedown touchmove', slide);
+				$('.container .pad').on('mousemove mousedown touchmove', slideEnd);
+				//点击下面的点切换轮换图
+				$(".buttons b").on("click", function(){changeImg(this);});
+				//每隔5妙轮转轮播图
+				var sh = setInterval(goNext, 5000);
+				
+				//fun部分
+				function slideStart(event) {
+					if (event.originalEvent.touches) {
+						event = event.originalEvent.touches[0];
+					}
+					
+					if (sliding == 0) {
+						sliding = 1;
+						startClientX = event.clientX;//点击开始的点坐标
+					}
+				}
+					
+				function slide(event) {
+					event.preventDefault();
+					if (event.originalEvent.touches) {
+						event = event.originalEvent.touches[0];
+					}
+					var deltaSlide = event.clientX - startClientX;//相比较于开始坐标的偏移量
+					if (sliding == 1 && deltaSlide != 0) { //假如鼠标偏移了
+						sliding = 2;
+						startPixelOffset = pixelOffset;
+					}
+					if (sliding == 2) {
+						var touchPixelRatio = 1;
+						if ((currentSlide == 0 && event.clientX > startClientX) || (currentSlide == slideCount - 1 && event.clientX < startClientX)) {
+							touchPixelRatio = 3;
+						}
+						pixelOffset = startPixelOffset + deltaSlide / touchPixelRatio;
+						$(".slide").css('left',pixelOffset +'px');
+					}
+				}
+			
+				function slideEnd(event) {
+					if (sliding == 1) {
+						sliding = 0;
+					}else if (sliding == 2) {
+						sliding = 0;
+						currentSlide = pixelOffset < startPixelOffset ? currentSlide + 1 : currentSlide - 1;
+						currentSlide = Math.min(Math.max(currentSlide, 0), slideCount - 1);
+						pixelOffset = currentSlide * -$('.slide img').width();
+						$('.container .buttons b').removeClass('on');
+						$('.container .buttons b').eq(currentSlide).addClass('on');
+						$(".slide").animate({left:pixelOffset}, 250);
+					}
+				}
+					
+				//下一张图片
+				function goNext() {
+					//图片切换
+					var start = $(".slide").css("left");
+					var startLeft = Number(start.substring(0, start.indexOf("px"))); 
+					var stepLeft = -leftWidth;
+					var gLeft = startLeft + stepLeft;
+					if (gLeft < (slideCount - 1)* stepLeft) {gLeft = 0;}
+					$(".slide").animate({left:gLeft}, 200);
+					
+					//按钮切换
+					var on = $(".buttons .on");
+					var startN = Number(on.attr("data-n"));
+					var currentN = startN + 1;
+					if (currentN == slideCount) {
+						currentN = 0;
+					}
+					$('.container .buttons b').removeClass('on');
+					$('.container .buttons b').eq(currentN).addClass('on');
+				}
+				
+				//点击切换图片
+				function changeImg(obj) {
+					var cName = $(obj).attr("data-n");
+					var cWidth = leftWidth;
+					var cDom = $(".buttons b[data-n=" + cName + "]");
+					if (cDom.attr("class").indexOf("on") < 0) {
+						var slide = -cName * cWidth;
+						$(".slide").animate({left:slide}, 200);
+						$('.container .slide img').removeClass('active');
+						$('.container .buttons b').removeClass('on');
+						$('.container .buttons b').eq(cName).addClass('on');
+						$('.container .slide img').eq(cName).addClass('active');
+					}
+				}
+				
+			});
+		</script>
+	
+		<div class="container">
+			<div class="pad right"></div>
+			<div class="pad"></div>
+			<div class="slide">
+				<img class="img1 active" data-n="0" data-href="" src="images/banner.jpg">
+				<img class="img2" data-n="1" src="images/banner2.jpg">
+				<img class="img3" data-n="2" src="images/banner3.jpg">
+			</div>
+			<div class="buttons">
+				<b class="btn1 on" data-n="0"></b>
+				<b class="btn2" data-n="1"></b>
+				<b class="btn3" data-n="2"></b>
+			</div>
+		</div>
+	</body>
+</html>
+
